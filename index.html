@@ -1444,11 +1444,10 @@
 
   // ---------------------------------------------------------------
   // Navigation — tap/click/arrow-key only, never a timer that moves
-  // the story on by itself. First tap-right while the entrance is
-  // still playing just fast-forwards it to its resting state (skip),
-  // per the handoff spec; only a second tap-right actually advances.
-  // Tap-left always restarts the previous screen from t=0. × resets
-  // to intro. This still fully respects "never guess a reading time
+  // the story on by itself. Tap-right on the intro/stories goes
+  // straight to the next screen, even mid-entrance. Tap-left always
+  // restarts the previous screen from t=0. × goes back to the entry
+  // popup. This still fully respects "never guess a reading time
   // and never auto-advance" — every screen change is a real, explicit
   // action from the person.
   // ---------------------------------------------------------------
@@ -1477,16 +1476,18 @@
     });
   }
 
-  // Taps: the entry popup only reacts to its "Spustit" button; summary
-  // and thanks move on only via their buttons; tap-left never goes
-  // back past the intro into the entry popup.
+  // Taps: on the intro and stories, tap-right goes straight to the next
+  // screen (no "first tap finishes the animation" step). The entry popup
+  // only reacts to its "Spustit" button; summary and thanks move on only
+  // via their buttons (a tap there just finishes their entrance);
+  // tap-left never goes back past the intro into the entry popup.
   tapRight.addEventListener('click', function(){
     retryBgPlayback(); // a tap is a real user gesture — good moment to retry blocked autoplay
     var type = SCREENS[state.index].type;
     if (type === 'entry') return;
+    if (type === 'intro' || type === 'story'){ goTo(state.index + 1); return; }
     var t = performance.now() - state.screenStart;
     if (t < state.dur) skipToEnd();
-    else if (type === 'intro' || type === 'story') goTo(state.index + 1);
   });
   tapLeft.addEventListener('click', function(){
     retryBgPlayback();
