@@ -2306,12 +2306,30 @@
       pauseLater(front);
     }
 
-    if (reduceMotion){
-      if (v.readyState >= 2) show(); else v.addEventListener('loadeddata', show, { once: true });
-      return;
+    if (!reduceMotion) safePlay(v);
+    whenFrameReady(v, show);
+  }
+
+  // Calls cb once the video can show a frame. Not just 'loadeddata':
+  // that fires only once per load, so when we come back to a slot that
+  // already holds this clip, the rewind (currentTime = 0) briefly drops
+  // readyState and 'loadeddata' never comes again — the old background
+  // then stayed up after fast back/forward taps. So: whichever of
+  // loadeddata / canplay / seeked / playing comes first, plus a
+  // timeout as a last resort.
+  function whenFrameReady(v, cb){
+    if (v.readyState >= 2 && !v.seeking){ cb(); return; }
+    var done = false;
+    var evs = ['loadeddata', 'canplay', 'seeked', 'playing'];
+    function fire(){
+      if (done) return;
+      done = true;
+      evs.forEach(function(ev){ v.removeEventListener(ev, fire); });
+      clearTimeout(t);
+      cb();
     }
-    safePlay(v);
-    if (v.readyState >= 2) show(); else v.addEventListener('loadeddata', show, { once: true });
+    evs.forEach(function(ev){ v.addEventListener(ev, fire); });
+    var t = setTimeout(fire, 800);
   }
 
   var fontsReady = (window.document && document.fonts && document.fonts.ready)
