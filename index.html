@@ -1108,6 +1108,7 @@
     var buttons = document.createElement('div');
     buttons.className = 'action-buttons';
     buttons.appendChild(makeButton('btn-primary', screen.share, function(){ shareCard(screen); }));
+    prepareShare(screen); // render the share PNG now, see shareCard()
     buttons.appendChild(makeButton('btn-text', screen.next, function(){ goTo(state.index + 1); }));
     actionsEl.appendChild(buttons);
 
@@ -1208,19 +1209,47 @@
     });
   }
 
+  // The PNG is rendered as soon as the summary opens (prepareShare), so
+  // the tap on "Sdílet" can call navigator.share() straight away — iOS
+  // Safari only opens the native share sheet while the tap's "user
+  // activation" is still fresh, which an async render could outlive.
+  var sharePrepared = null; // Promise<File>
+
+  function prepareShare(screen){
+    sharePrepared = renderCardPng(screen).then(function(blob){
+      return new File([blob], 'muj-rok-s-o2.png', { type: 'image/png' });
+    });
+    sharePrepared.then(function(f){ sharePrepared.file = f; });
+  }
+
+  function downloadFile(file){
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  }
+
   function shareCard(screen){
-    renderCardPng(screen).then(function(blob){
-      var file = new File([blob], 'muj-rok-s-o2.png', { type: 'image/png' });
+    if (!sharePrepared) prepareShare(screen);
+    var file = sharePrepared.file;
+    if (file){
+      // Synchronous path — still inside the tap.
       if (navigator.canShare && navigator.canShare({ files: [file] })){
-        return navigator.share({ files: [file], title: 'Můj rok 2026 s O2' }).catch(function(){});
+        navigator.share({ files: [file], title: 'Můj rok 2026 s O2' }).catch(function(){});
+      } else {
+        downloadFile(file);
       }
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+      return;
+    }
+    // Not rendered yet (tapped within the first moment) — try anyway.
+    sharePrepared.then(function(f){
+      if (navigator.canShare && navigator.canShare({ files: [f] })){
+        return navigator.share({ files: [f], title: 'Můj rok 2026 s O2' }).catch(function(){});
+      }
+      downloadFile(f);
     });
   }
 
