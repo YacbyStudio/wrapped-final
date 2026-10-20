@@ -364,6 +364,86 @@
   .phone.is-entry .home-indicator,
   .phone.is-entry .tap-zone{ visibility:hidden; }
 
+  /* ---- illustrative iOS share sheet (desktop mockup only) ----
+     On a real phone "Sdílet" opens the native sheet; inside the desktop
+     mockup we draw a look-alike so the client sees the step too. */
+  .ios-share{
+    position:absolute; inset:0; z-index:20;
+    pointer-events:none;
+    font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color:#000; -webkit-font-smoothing:antialiased;
+  }
+  .ios-share.open{ pointer-events:auto; }
+  .ios-share .scrim{
+    position:absolute; inset:0; background:rgba(0,0,0,.28);
+    opacity:0; transition:opacity .35s ease;
+  }
+  .ios-share.open .scrim{ opacity:1; }
+  .ios-share .sheet{
+    position:absolute; left:0; right:0; bottom:0;
+    background:#f2f2f7;
+    border-radius:13px 13px 0 0;
+    padding:0 0 34px;
+    transform:translateY(102%);
+    transition:transform .45s cubic-bezier(.32,.72,0,1);
+    box-shadow:0 -8px 30px rgba(0,0,0,.12);
+  }
+  .ios-share.open .sheet{ transform:translateY(0); }
+  .ios-share .grabber{ width:36px; height:5px; border-radius:3px; background:#c7c7cc; margin:6px auto 0; }
+  .ios-share .head{ display:flex; align-items:center; gap:12px; padding:12px 16px 14px; }
+  .ios-share .thumb{
+    width:44px; height:60px; border-radius:6px; flex:0 0 auto;
+    background:#0050ff center / cover no-repeat;
+    box-shadow:0 1px 4px rgba(0,0,0,.18);
+  }
+  .ios-share .meta{ flex:1; min-width:0; }
+  .ios-share .meta .t{ font-size:15px; font-weight:600; letter-spacing:-.2px; }
+  .ios-share .meta .d{ font-size:13px; color:#8e8e93; margin-top:2px; }
+  .ios-share .meta .o{ font-size:13px; color:#007aff; margin-top:3px; }
+  .ios-share .x{
+    width:30px; height:30px; border-radius:50%; border:none; padding:0;
+    background:#e3e3e8; color:#8e8e93; display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .ios-share .sep{ height:.5px; background:#c6c6c8; margin:0 0 0 16px; }
+  .ios-share .row{
+    display:flex; gap:14px; overflow:hidden; padding:14px 16px 12px;
+  }
+  .ios-share .tile{
+    width:62px; flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:6px;
+    background:none; border:none; padding:0; cursor:pointer; font:inherit; color:inherit;
+  }
+  .ios-share .tile span{ font-size:11px; line-height:13px; text-align:center; white-space:nowrap; }
+  .ios-share .avatar{
+    position:relative; width:60px; height:60px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; font-weight:500; color:#fff;
+    background:linear-gradient(180deg, #a5abb8, #858b98);
+  }
+  .ios-share .avatar .badge{
+    position:absolute; right:-2px; bottom:-2px; width:22px; height:22px; border-radius:6px;
+    border:2px solid #f2f2f7;
+  }
+  .ios-share .app{
+    width:60px; height:60px; border-radius:14px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .ios-share .app svg{ width:34px; height:34px; display:block; }
+  .ios-share .list{
+    margin:4px 16px 0; background:#fff; border-radius:10px; overflow:hidden;
+  }
+  .ios-share .item{
+    display:flex; align-items:center; justify-content:space-between;
+    width:100%; height:44px; padding:0 16px; border:none; background:none;
+    font:inherit; font-size:17px; letter-spacing:-.4px; color:#000; cursor:pointer; text-align:left;
+  }
+  .ios-share .item + .item{ border-top:.5px solid #c6c6c8; }
+  .ios-share .item:active{ background:#e5e5ea; }
+  .ios-share .item svg{ width:22px; height:22px; color:#000; }
+  .ios-share .home-bar{
+    position:absolute; left:50%; bottom:8px; width:134px; height:5px; border-radius:3px;
+    background:#000; transform:translateX(-50%);
+  }
+
   /* ---- thanks ---- */
   .thanks-wrap{
     position:absolute; inset:0; top:-112px;
@@ -571,6 +651,44 @@
       <button class="tap-zone right" id="tapRight" aria-label="Další obrazovka"></button>
 
       <div class="actions" id="actions"></div>
+
+      <div class="ios-share" id="iosShare" aria-hidden="true">
+        <div class="scrim" data-close></div>
+        <div class="sheet" role="dialog" aria-label="Sdílet">
+          <div class="grabber"></div>
+          <div class="head">
+            <div class="thumb" id="iosShareThumb"></div>
+            <div class="meta">
+              <div class="t">Můj rok 2026 s O2</div>
+              <div class="d" id="iosShareSize">Obrázek PNG</div>
+              <div class="o">Možnosti ›</div>
+            </div>
+            <button class="x" type="button" data-close aria-label="Zavřít"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+          </div>
+          <div class="sep"></div>
+          <div class="row">
+            <button class="tile" type="button" data-close><div class="avatar">JN<i class="badge" style="background:#34c759"></i></div><span>Jana</span></button>
+            <button class="tile" type="button" data-close><div class="avatar">PK<i class="badge" style="background:#34c759"></i></div><span>Petr</span></button>
+            <button class="tile" type="button" data-close><div class="avatar">M<i class="badge" style="background:#25d366"></i></div><span>Máma</span></button>
+            <button class="tile" type="button" data-close><div class="avatar">TV<i class="badge" style="background:#007aff"></i></div><span>Tomáš</span></button>
+            <button class="tile" type="button" data-close><div class="avatar">LH<i class="badge" style="background:#34c759"></i></div><span>Lucie</span></button>
+          </div>
+          <div class="sep"></div>
+          <div class="row">
+            <button class="tile" type="button" data-close><div class="app" style="background:linear-gradient(180deg,#5ac8fa,#007aff)"><svg viewBox="0 0 34 34" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M8 22a11 11 0 1 1 18 0"/><path d="M12 20a6.5 6.5 0 1 1 10 0"/><circle cx="17" cy="17" r="2" fill="#fff" stroke="none"/><path d="M17 20l-4 7h8z" fill="#fff" stroke="none"/></svg></div><span>AirDrop</span></button>
+            <button class="tile" type="button" data-close><div class="app" style="background:linear-gradient(180deg,#65e07a,#30c048)"><svg viewBox="0 0 34 34"><ellipse cx="17" cy="16" rx="12" ry="9.5" fill="#fff"/><path d="M9 21c0 3-2 5-3 6 3 0 6-1 8-3z" fill="#fff"/></svg></div><span>Zprávy</span></button>
+            <button class="tile" type="button" data-close><div class="app" style="background:linear-gradient(180deg,#3cb0ff,#1a7cf5)"><svg viewBox="0 0 34 34" fill="none"><rect x="5" y="9" width="24" height="17" rx="2.5" fill="#fff"/><path d="M6 11l11 8 11-8" stroke="#1a7cf5" stroke-width="2" stroke-linejoin="round"/></svg></div><span>Mail</span></button>
+            <button class="tile" type="button" data-close><div class="app" style="background:#25d366"><svg viewBox="0 0 34 34" fill="none"><path d="M17 5a12 12 0 0 0-10.4 18L5 29l6.2-1.6A12 12 0 1 0 17 5z" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/><path d="M12.5 12.5c.5 3.5 4.5 8 9 9l1.6-2-2.6-1.4-1.2 1.2c-1.6-.6-3.6-2.6-4.2-4.2l1.2-1.2-1.4-2.6z" fill="#fff"/></svg></div><span>WhatsApp</span></button>
+            <button class="tile" type="button" data-close><div class="app" style="background:radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285aeb 90%)"><svg viewBox="0 0 34 34" fill="none" stroke="#fff" stroke-width="2.4"><rect x="7" y="7" width="20" height="20" rx="6"/><circle cx="17" cy="17" r="4.6"/><circle cx="22.6" cy="11.4" r="1.2" fill="#fff" stroke="none"/></svg></div><span>Instagram</span></button>
+          </div>
+          <div class="list">
+            <button class="item" type="button" data-action="copy">Kopírovat<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="8" y="8" width="11" height="12" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></svg></button>
+            <button class="item" type="button" data-action="save">Uložit obrázek<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg></button>
+            <button class="item" type="button" data-close>Tisk<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 14h10v6H7z" fill="#fff"/></svg></button>
+          </div>
+          <div class="home-bar"></div>
+        </div>
+      </div>
     </div>
     <p class="credit">Concept by Lukáš Nádvorník</p>
     </div>
@@ -1232,8 +1350,47 @@
     setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
   }
 
+  // ---- illustrative iOS share sheet (desktop mockup) ----
+  var iosShareEl = document.getElementById('iosShare');
+  var iosShareThumb = document.getElementById('iosShareThumb');
+  var iosShareSize = document.getElementById('iosShareSize');
+  var iosShareUrl = null;
+  var isRealPhone = window.matchMedia('(max-width: 480px)'); // same breakpoint as the full-screen layout
+
+  function formatMB(bytes){
+    return (bytes / 1048576).toLocaleString('cs-CZ', { maximumFractionDigits: 1 }) + ' MB';
+  }
+  function openShareSheet(){
+    iosShareEl.classList.add('open');
+    iosShareEl.setAttribute('aria-hidden', 'false');
+    sharePrepared.then(function(f){
+      if (iosShareUrl) URL.revokeObjectURL(iosShareUrl);
+      iosShareUrl = URL.createObjectURL(f);
+      iosShareThumb.style.backgroundImage = 'url(' + iosShareUrl + ')';
+      iosShareSize.textContent = 'Obrázek PNG · ' + formatMB(f.size);
+    });
+  }
+  function closeShareSheet(){
+    iosShareEl.classList.remove('open');
+    iosShareEl.setAttribute('aria-hidden', 'true');
+  }
+  iosShareEl.addEventListener('click', function(e){
+    var t = e.target.closest('[data-close], [data-action]');
+    if (!t) return;
+    var action = t.getAttribute('data-action');
+    if (action === 'save' && sharePrepared) sharePrepared.then(downloadFile);
+    if (action === 'copy' && sharePrepared && navigator.clipboard && window.ClipboardItem){
+      sharePrepared.then(function(f){
+        navigator.clipboard.write([new ClipboardItem({ 'image/png': f })]).catch(function(){});
+      });
+    }
+    closeShareSheet();
+  });
+
   function shareCard(screen){
     if (!sharePrepared) prepareShare(screen);
+    // Desktop mockup → the look-alike sheet; a real phone → native sheet.
+    if (!isRealPhone.matches){ openShareSheet(); return; }
     var file = sharePrepared.file;
     if (file){
       // Synchronous path — still inside the tap.
@@ -1268,6 +1425,7 @@
     hintEl.textContent = screen.hint || 'Klepnutím pokračujete';
 
     actionsEl.innerHTML = '';
+    closeShareSheet();
     phoneEl.classList.toggle('is-entry', screen.type === 'entry');
     var result;
     if (screen.type === 'entry') result = buildEntry();
