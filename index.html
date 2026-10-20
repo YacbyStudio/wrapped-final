@@ -7,7 +7,7 @@
   :root{
     --bg-base:#0032d9;
     /* Figma "Gradients/Brands/Brand Gradient" — static background of the
-       loading, summary and thanks screens (and the fallback behind video). */
+       summary and thanks screens (and the fallback behind video). */
     --bg-gradient:linear-gradient(0deg, #afd7ff 0%, #6aa1ff 18%, #1e67ff 40%, #0050ff 50%, #00008c 100%);
     --card-bg:#02083f;
     --ink:#ffffff;
@@ -350,22 +350,29 @@
     color:var(--ink); font-size:16px; font-weight:700; cursor:pointer; font-family:var(--font-body);
   }
 
-  /* ---- loading ---- */
-  .loading-wrap{
+  /* ---- entry (app home with the in-app popup, Figma "Entry screen") ----
+     The whole screen is one exported image; only "Spustit" is live —
+     an invisible hotspot over the button (Figma: x 103.5, y 729,
+     168×48 in the 375×844 frame, kept in % so it tracks the image). */
+  .entry-shot{
     position:absolute; inset:0; top:-112px;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:40px; padding:0 32px;
+    background:#e9ecf5 url('img/entry.jpg') center / 100% 100% no-repeat;
   }
-  /* Lottie spinner (lottie/loading.json, looping — the real loading
-     time isn't known). Its 160px canvas holds a ~130px ring; 168px
-     here makes the ring match the 136px frame in Figma, the negative
-     margin keeps the layout at 136px. */
-  .loading-lottie{ width:168px; height:168px; margin:-16px; }
-  .loading-text{
-    font-family:var(--font-display); font-weight:900; font-style:italic;
-    font-size:28px; line-height:1.4; letter-spacing:-.4px; text-align:center;
-    max-width:311px;
+  .entry-start{
+    position:absolute;
+    left:27.6%; width:44.8%; top:86.37%; height:5.69%;
+    border:none; border-radius:999px; background:transparent; padding:0;
+    cursor:pointer; pointer-events:auto;
   }
+  .entry-start:focus{ outline:none; }
+  .entry-start:active{ background:rgba(255,255,255,.15); }
+  /* On the entry screen the wrapper's own chrome is hidden (the image
+     has the app's status bar, header and home indicator). */
+  .phone.is-entry .header,
+  .phone.is-entry .progress,
+  .phone.is-entry .screen-label,
+  .phone.is-entry .home-indicator,
+  .phone.is-entry .tap-zone{ visibility:hidden; }
 
   /* ---- thanks ---- */
   .thanks-wrap{
@@ -392,7 +399,7 @@
   /* Buttons live in their own layer ABOVE the tap zones, so tapping a
      button never also counts as "tap right / tap left". */
   .actions{
-    position:absolute; left:0; right:0; bottom:0; z-index:8;
+    position:absolute; inset:0; z-index:8;
     pointer-events:none;
   }
   .action-buttons{
@@ -541,14 +548,12 @@
     .content{ top:calc(64px + max(env(safe-area-inset-top,0px), 24px)); }
     .tap-zone{ top:calc(62px + max(env(safe-area-inset-top,0px), 24px)); }
     .home-indicator{ display:none; }
-    .loading-wrap, .thanks-wrap, .summary-wrap{ top:calc(-1 * (64px + max(env(safe-area-inset-top,0px), 24px))); }
+    .entry-shot, .thanks-wrap, .summary-wrap{ top:calc(-1 * (64px + max(env(safe-area-inset-top,0px), 24px))); }
     .credit, #quickPanel, #dataPanel, #qrPanel{ display:none; }
     .phone-row, .phone-col{ display:block; }
     .side-col{ display:none; }
   }
 </style>
-
-<script src="vendor/lottie_light.min.js"></script>
 
 <div class="stage">
   <div class="backdrop-glow"></div>
@@ -638,7 +643,6 @@
   // "π" renders as the O₂ logo in the On Air font (same as in Figma).
   var DEFAULT_DATA = {
     title: 'Váš rok s π',
-    loading: { text: 'Připravujeme váš rok…' },
     intro: {
       phrases: ['Podívejme se,', 'jak jste letos', 'byli s π', 've spojení!'],
       sub: 'Svůj mobil jsi používali celý rok 2026.'
@@ -690,17 +694,16 @@
   var DATA = JSON.parse(JSON.stringify(DEFAULT_DATA));
   var SCREENS = [];
 
-  // Flow: loading → intro → stories → summary → thanks.
+  // Flow: entry (in-app popup) → intro → stories → summary → thanks.
   // Background per screen: a looping video for intro + stories
   // (BG_VIDEOS[0] = intro, the rest cycle over the stories), the static
   // --bg-gradient for everything else. Only intro + stories have a
   // progress bar (one segment each).
   var BG_VIDEOS = ['bg/story-1.mp4', 'bg/story-2.mp4', 'bg/story-3.mp4', 'bg/story-4.mp4'];
-  var LOADING_MS = 2500;
 
   function buildScreens(){
     var storyVideos = BG_VIDEOS.slice(1);
-    SCREENS = [Object.assign({ type: 'loading' }, DATA.loading)]
+    SCREENS = [{ type: 'entry' }]
       .concat([{ type: 'intro', bg: BG_VIDEOS[0] }])
       .concat(DATA.stories.map(function(s, i){
         return Object.assign({ type: 'story', bg: storyVideos[i % storyVideos.length] }, s);
@@ -713,7 +716,7 @@
     });
     buildProgress();
   }
-  var INTRO_INDEX = 1; // screen 0 is loading
+  var INTRO_INDEX = 1; // screen 0 is the entry popup
   // Called once DOM refs (progressEl etc.) exist — see boot section below.
 
   // ---------------------------------------------------------------
@@ -1031,32 +1034,20 @@
     return { dur: (reduceMotion ? 0 : hintAt) + 400, noHint: true };
   }
 
-  function buildLoading(screen, gen){
-    var wrap = document.createElement('div');
-    wrap.className = 'loading-wrap';
-    var spinner = document.createElement('div');
-    spinner.className = 'loading-lottie';
-    wrap.appendChild(spinner);
-    if (window.lottie){
-      var anim = lottie.loadAnimation({
-        container: spinner, renderer: 'svg', loop: true, autoplay: !reduceMotion,
-        path: 'lottie/loading.json'
-      });
-      // Stop it once we leave the screen (contentEl gets cleared).
-      var stopCheck = setInterval(function(){
-        if (!spinner.isConnected){ anim.destroy(); clearInterval(stopCheck); }
-      }, 500);
-    }
-    var text = document.createElement('div');
-    text.className = 'loading-text';
-    text.textContent = screen.text;
-    wrap.appendChild(text);
-    contentEl.appendChild(wrap);
-    // Stand-in for the real data fetch: moves on by itself after
-    // LOADING_MS (the spinner loops, so any duration works).
-    // Loading moves on by itself (it stands in for the real data fetch).
-    setTimeout(function(){ if (gen === renderGen) goTo(INTRO_INDEX); }, LOADING_MS);
-    return { dur: LOADING_MS, noHint: true };
+  function buildEntry(){
+    var shot = document.createElement('div');
+    shot.className = 'entry-shot';
+    contentEl.appendChild(shot);
+    var start = document.createElement('button');
+    start.type = 'button';
+    start.className = 'entry-start';
+    start.setAttribute('aria-label', 'Spustit');
+    start.addEventListener('click', function(){
+      retryBgPlayback(); // real tap → lets the intro video start on iOS too
+      goTo(INTRO_INDEX);
+    });
+    actionsEl.appendChild(start);
+    return { dur: 0, noHint: true };
   }
 
   function makeButton(cls, label, onClick){
@@ -1314,8 +1305,9 @@
 
     actionsEl.innerHTML = '';
     phoneEl.classList.toggle('is-summary', screen.type === 'summary');
+    phoneEl.classList.toggle('is-entry', screen.type === 'entry');
     var result;
-    if (screen.type === 'loading') result = buildLoading(screen, gen);
+    if (screen.type === 'entry') result = buildEntry();
     else if (screen.type === 'intro') result = buildIntro(screen);
     else if (screen.type === 'story') result = buildStory(screen);
     else if (screen.type === 'summary') result = buildSummary(screen);
@@ -1364,33 +1356,33 @@
     });
   }
 
-  // Taps: loading ignores them (it moves on by itself); summary and
-  // thanks move on only via their buttons; tap-left never goes back
-  // past the intro into loading.
+  // Taps: the entry popup only reacts to its "Spustit" button; summary
+  // and thanks move on only via their buttons; tap-left never goes
+  // back past the intro into the entry popup.
   tapRight.addEventListener('click', function(){
     retryBgPlayback(); // a tap is a real user gesture — good moment to retry blocked autoplay
     var type = SCREENS[state.index].type;
-    if (type === 'loading') return;
+    if (type === 'entry') return;
     var t = performance.now() - state.screenStart;
     if (t < state.dur) skipToEnd();
     else if (type === 'intro' || type === 'story') goTo(state.index + 1);
   });
   tapLeft.addEventListener('click', function(){
     retryBgPlayback();
-    if (SCREENS[state.index].type === 'loading') return;
+    if (SCREENS[state.index].type === 'entry') return;
     goTo(Math.max(INTRO_INDEX, state.index - 1));
   });
   document.addEventListener('keydown', function(e){
     if (e.key === 'ArrowRight') tapRight.click();
     if (e.key === 'ArrowLeft') tapLeft.click();
-    // R = restart from loading (not while typing into a panel field)
+    // R = restart from the entry popup (not while typing into a panel field)
     if ((e.key === 'r' || e.key === 'R') && !e.metaKey && !e.ctrlKey && !e.altKey &&
         !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)){
       retryBgPlayback();
       goTo(0);
     }
   });
-  closeBtn.addEventListener('click', function(){ retryBgPlayback(); goTo(0); }); // × = start over from loading
+  closeBtn.addEventListener('click', function(){ retryBgPlayback(); goTo(0); }); // × = back to the app (entry popup)
 
   // ---------------------------------------------------------------
   // Frame loop — only drives the progress bar fill (which really is
@@ -1524,7 +1516,7 @@
   function collectNumericFields(){
     var fields = [];
     DATA.stories.forEach(function(story, si){
-      var screenIndex = INTRO_INDEX + 1 + si; // loading, intro, then stories
+      var screenIndex = INTRO_INDEX + 1 + si; // entry, intro, then stories
       story.blocks.forEach(function(block, bi){
         block.values.forEach(function(v, vi){
           fields.push({
