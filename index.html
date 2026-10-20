@@ -407,6 +407,7 @@
     display:flex; flex-direction:column; gap:8px;
     opacity:0; transform:translateY(16px); transition:none;
   }
+  .action-buttons.single{ bottom:52px; } /* one button: Figma y 728 of 844 */
   .action-buttons.on{ opacity:1; transform:translateY(0); pointer-events:auto; transition:opacity .48s ease, transform .62s cubic-bezier(.2,.8,.2,1); }
 
   .hint{
@@ -671,6 +672,7 @@
         quote: '„To vás řadí mezi top 33% datařů u π“'
       }
     ],
+    storyNext: 'Pokračovat',   // primary button on the last story
     summary: {
       title: 'Sdílejte váš rok s π\ns ostatními',
       cardTitle: 'Můj rok 2026 s π',
@@ -1027,6 +1029,18 @@
       wrap.appendChild(q);
       setTimeout(function(){ q.classList.add('on'); }, reduceMotion ? 0 : blocksEndAt);
       hintAt = blocksEndAt + 700;
+    }
+
+    // Last story: a primary "Pokračovat" button (Figma Story - 4, y 728),
+    // so it's obvious the person should move on to the summary. Taps
+    // keep working as on the other stories.
+    var isLast = !SCREENS[state.index + 1] || SCREENS[state.index + 1].type !== 'story';
+    if (isLast && DATA.storyNext){
+      var buttons = document.createElement('div');
+      buttons.className = 'action-buttons single';
+      buttons.appendChild(makeButton('btn-primary', DATA.storyNext, function(){ goTo(state.index + 1); }));
+      actionsEl.appendChild(buttons);
+      setTimeout(function(){ buttons.classList.add('on'); }, reduceMotion ? 0 : hintAt);
     }
 
     // "Klepnutím pokračujete" only on the intro (first screen with the
