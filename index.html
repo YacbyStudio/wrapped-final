@@ -253,7 +253,7 @@
   /* "To vás řadí mezi top x %" — Figma: On Air Black 20/28, top 583px
      of the 375×844 frame (= 471px inside .content, which starts at 112). */
   .quote{
-    position:absolute; left:50%; top:471px; width:250px; margin-left:-125px;
+    position:absolute; left:50%; top:min(471px, calc(100% - 190px)); width:250px; margin-left:-125px;
     font-family:var(--font-display); font-size:20px; font-weight:900; font-style:normal;
     line-height:28px; letter-spacing:-.4px; text-align:center;
     opacity:0; transform:translateY(12px);
@@ -277,9 +277,13 @@
   .summary-title.on{ opacity:1; transform:translateY(0); transition:opacity .48s ease, transform .62s cubic-bezier(.2,.8,.2,1); }
   /* .share-card = entrance animation + 3D perspective; .card-face = the
      card itself, which sways side to side once after it lands. */
+  /* .card-fit reserves the card's slot and scales it down on short
+     screens (browser chrome on a phone eats ~150px), so the card never
+     ends up under the Sdílet / Pokračovat buttons. */
+  .card-fit{ margin-top:40px; width:270px; height:370px; flex:0 0 auto; }
+  .card-fit .card-scale{ width:270px; height:370px; transform-origin:50% 0; }
   .share-card{
     position:relative;
-    margin-top:40px;
     width:270px; height:370px;
     perspective:900px;
     opacity:0; transform:scale(.92) rotate(-4deg) translateY(24px);
@@ -502,6 +506,14 @@
     pointer-events:none;
   }
   .thanks-lottie svg{ overflow:visible; }
+  /* The Lottie's own Gaussian Blur renders as an SVG filter, which
+     WebKit (every iOS browser) clips into a rectangle — a pale square
+     instead of a blurred O. So on the web the blur is dropped from the
+     Lottie at load time and done here as a CSS blur on the whole logo
+     layer, timed to the Lottie (O blur clears by frame 26, the 2 by 34
+     @ 60 fps). The JSON for the devs keeps its blur. */
+  .thanks-lottie.blur-in{ animation:logoBlurIn .56s cubic-bezier(.33,0,.25,1) both; }
+  @keyframes logoBlurIn{ from{ filter:blur(40px); } to{ filter:blur(0); } }
   .thanks-title, .thanks-sub{ position:relative; z-index:3; }
   /* O₂ bubbles (Brand Factory master artwork, motion from the Ooo2
      Bubble Factory config — see img/bubbles/bubbles.json). Behind the
@@ -1272,7 +1284,13 @@
     logo.className = 'card-logo';
     logo.innerHTML = '<img src="img/logo-o2.svg" alt="O2">';
     face.appendChild(logo);
-    wrap.appendChild(card);
+    var fit = document.createElement('div');
+    fit.className = 'card-fit';
+    var scaler = document.createElement('div');
+    scaler.className = 'card-scale';
+    scaler.appendChild(card);
+    fit.appendChild(scaler);
+    wrap.appendChild(fit);
     setTimeout(function(){ card.classList.add('on'); }, reduceMotion ? 0 : 350);
     // Once the card has landed, it sways side to side by itself (once).
     if (!reduceMotion) setTimeout(function(){
@@ -1288,6 +1306,19 @@
     buttons.appendChild(makeButton('btn-text', screen.next, function(){ goTo(state.index + 1); }));
     actionsEl.appendChild(buttons);
 
+    // Fit the card between the title and the buttons (2×64 + 8 gap,
+    // 34 from the bottom) with a 16px breathing gap.
+    requestAnimationFrame(function(){
+      if (!fit.isConnected) return;
+      var ph = phoneEl.getBoundingClientRect();
+      var room = (ph.bottom - 34 - 136 - 16) - fit.getBoundingClientRect().top;
+      var k = Math.max(.55, Math.min(1, room / 370));
+      scaler.style.transform = k < 1 ? 'scale(' + k.toFixed(3) + ')' : '';
+      fit.style.height = (370 * k) + 'px';
+      fit.style.width = (270 * k) + 'px';
+      scaler.style.marginLeft = ((270 * k - 270) / 2) + 'px';
+    });
+
     var btnAt = 700 + screen.items.length * CARD_ITEM_GAP + 300;
     setTimeout(function(){ buttons.classList.add('on'); }, reduceMotion ? 0 : btnAt);
 
@@ -1298,6 +1329,16 @@
   // & blurred and settles, the "2" slides in), then the texts and the
   // button — after the reference end-screen video.
   var LOGO_AT = 250;
+  var logoLottie = null;
+  // The same JSON the devs get, minus its Gaussian Blur effects (see
+  // .thanks-lottie.blur-in for why the web does the blur in CSS).
+  function loadLogoLottie(){
+    if (!logoLottie) logoLottie = fetch('lottie/o2-logo-intro.json').then(function(r){ return r.json(); }).then(function(d){
+      d.layers.forEach(function(l){ delete l.ef; });
+      return d;
+    });
+    return logoLottie.then(function(d){ return JSON.parse(JSON.stringify(d)); }); // lottie mutates its data
+  }
 
   // ---- bubbles: seamless loop driven by img/bubbles/bubbles.json ----
   // Each bubble glides along its own straight line (direction from the
@@ -1365,16 +1406,22 @@
     contentEl.appendChild(wrap);
     startBubbles(bubbleLayer);
 
-    var anim = null;
     if (window.lottie){
-      anim = lottie.loadAnimation({ container: lot, renderer: 'svg', loop: false, autoplay: false, path: 'lottie/o2-logo-intro.json' });
-      if (reduceMotion) anim.addEventListener('DOMLoaded', function(){ anim.goToAndStop(anim.totalFrames - 1, true); });
-      else setTimeout(function(){ if (lot.isConnected) anim.play(); }, LOGO_AT);
-      var stopCheck = setInterval(function(){ if (!lot.isConnected){ anim.destroy(); clearInterval(stopCheck); } }, 1000);
+      loadLogoLottie().then(function(data){
+        if (!lot.isConnected) return;
+        var anim = lottie.loadAnimation({ container: lot, renderer: 'svg', loop: false, autoplay: false, animationData: data });
+        logo._anim = anim; // skipToEnd() jumps it to the last frame
+        if (reduceMotion){ anim.addEventListener('DOMLoaded', function(){ anim.goToAndStop(anim.totalFrames - 1, true); }); }
+        else setTimeout(function(){
+          if (!lot.isConnected) return;
+          lot.classList.add('blur-in');
+          anim.play();
+        }, LOGO_AT);
+        var stopCheck = setInterval(function(){ if (!lot.isConnected){ anim.destroy(); clearInterval(stopCheck); } }, 1000);
+      });
     } else {
       lot.innerHTML = '<img src="img/logo-o2.svg" alt="" style="position:absolute;left:138.8px;top:137.4px;width:123.75px">';
     }
-    logo._anim = anim; // skipToEnd() jumps it to the last frame
 
     setTimeout(function(){ title.classList.add('on'); }, reduceMotion ? 0 : 750);
     setTimeout(function(){ sub.classList.add('on'); }, reduceMotion ? 0 : 950);
@@ -1594,6 +1641,7 @@
     });
     var tl = document.querySelector('#content .thanks-logo');
     if (tl && tl._anim) tl._anim.goToAndStop(tl._anim.totalFrames - 1, true);
+    if (tl) tl.querySelector('.thanks-lottie').classList.remove('blur-in');
     if (!state.noHint) hintEl.classList.add('show');
     state.screenStart = performance.now() - state.dur;
     requestAnimationFrame(function(){
