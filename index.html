@@ -546,6 +546,7 @@
     opacity:0; transform:translateY(16px); transition:none;
   }
   .action-buttons.single{ bottom:52px; } /* one button: Figma y 728 of 844 */
+  .action-buttons.thanks{ bottom:50px; }  /* Thanks: Figma button bottom at 794 of 844 (16px above the home indicator) */
   .action-buttons.on{ opacity:1; transform:translateY(0); pointer-events:auto; transition:opacity .48s ease, transform .62s cubic-bezier(.2,.8,.2,1); }
 
   .hint{
@@ -1427,7 +1428,7 @@
     setTimeout(function(){ sub.classList.add('on'); }, reduceMotion ? 0 : 950);
 
     var buttons = document.createElement('div');
-    buttons.className = 'action-buttons';
+    buttons.className = 'action-buttons thanks';
     // "Zobrazit voucher" does nothing yet (per brief).
     buttons.appendChild(makeButton('btn-primary', screen.button, null));
     actionsEl.appendChild(buttons);
