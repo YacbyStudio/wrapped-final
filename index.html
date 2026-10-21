@@ -490,9 +490,37 @@
     display:flex; flex-direction:column; align-items:center;
     padding:218px 16px 0; text-align:center;
   }
-  .thanks-logo{ width:135px; height:135px; padding:5.6px; opacity:0; transform:scale(.9); transition:none; }
-  .thanks-logo.on{ opacity:1; transform:scale(1); transition:opacity .48s ease, transform .62s cubic-bezier(.2,.8,.2,1); }
-  .thanks-logo img{ width:100%; height:100%; display:block; }
+  /* Logo = Lottie (lottie/o2-logo-intro.json, the same file the devs
+     get). The 135px box only reserves the Figma slot; the 375×375 Lottie
+     comp has the "O" exactly in its centre, so centring the comp on the
+     box centres the O (not the whole O₂) on the screen. Vertically the O
+     sits where Figma has it: 55.8px into the box. */
+  .thanks-logo{ position:relative; width:135px; height:135px; z-index:1; }
+  .thanks-lottie{
+    position:absolute; width:375px; height:375px;
+    left:calc(50% - 187.5px); top:calc(55.8px - 187.5px);
+    pointer-events:none;
+  }
+  .thanks-lottie svg{ overflow:visible; }
+  /* Rising bubbles (after the reference end-screen video). */
+  .bubbles{ position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:2; }
+  .bubble{
+    position:absolute; bottom:-160px; border-radius:50%;
+    width:var(--size); height:var(--size); left:var(--x);
+    background:
+      radial-gradient(circle at 32% 26%, rgba(255,255,255,.7) 0 4%, rgba(255,255,255,0) 16%),
+      radial-gradient(circle at 50% 50%, rgba(255,255,255,0) 56%, rgba(255,255,255,.14) 70%, rgba(255,255,255,.5) 97%, rgba(255,255,255,0) 100%);
+    box-shadow:inset 0 -6px 14px rgba(255,255,255,.12);
+    opacity:0;
+    animation:bubbleRise var(--dur) cubic-bezier(.3,.15,.45,1) var(--delay) forwards;
+  }
+  @keyframes bubbleRise{
+    0%  { opacity:0; transform:translate(0,0) scale(.85); }
+    12% { opacity:1; }
+    80% { opacity:1; }
+    100%{ opacity:0; transform:translate(var(--dx), -1100px) scale(1); }
+  }
+  .thanks-title, .thanks-sub{ position:relative; z-index:3; }
   .thanks-title{
     margin-top:59px;
     font-family:var(--font-display); font-weight:900; font-style:italic;
@@ -620,7 +648,7 @@
   .data-panel .status.ok{ color:#0a8a3f; }
 
   @media (prefers-reduced-motion: reduce){
-    .intro-headline, .intro-sub, .block-lead, .value-row, .quote, .summary-title, .share-card, .card-item, .action-buttons, .thanks-logo, .thanks-title, .thanks-sub{
+    .intro-headline, .intro-sub, .block-lead, .value-row, .quote, .summary-title, .share-card, .card-item, .action-buttons, .thanks-title, .thanks-sub{
       transition-duration:.2s !important;
       transform:none !important;
     }
@@ -665,6 +693,8 @@
     .side-col{ display:none; }
   }
 </style>
+
+<script src="vendor/lottie_svg.min.js"></script>
 
 <div class="stage">
   <div class="backdrop-glow"></div>
@@ -1276,12 +1306,24 @@
     return { dur: (reduceMotion ? 0 : btnAt) + 400, noHint: true };
   }
 
+  // Thanks: the O₂ logo plays lottie/o2-logo-intro.json (O flies in big
+  // & blurred and settles, the "2" slides in), bubbles rise past it,
+  // then the texts and the button — after the reference end-screen video.
+  var LOGO_AT = 250, BUBBLES_AT = 500;
+  var BUBBLES = [ // x (% of width), size (px), delay (ms after BUBBLES_AT), duration (ms), drift (px)
+    [8, 70, 0, 2600, 14], [62, 46, 120, 2300, -10], [30, 120, 260, 3000, 8],
+    [78, 90, 380, 2700, -18], [16, 34, 520, 2200, 10], [48, 64, 640, 2600, -6],
+    [86, 28, 760, 2100, -8], [4, 150, 900, 3200, 16], [55, 38, 1040, 2400, 12]
+  ];
   function buildThanks(screen){
     var wrap = document.createElement('div');
     wrap.className = 'thanks-wrap';
     var logo = document.createElement('div');
     logo.className = 'thanks-logo';
-    logo.innerHTML = '<img src="img/logo-o2.svg" alt="O2">';
+    logo.setAttribute('aria-label', 'O2');
+    var lot = document.createElement('div');
+    lot.className = 'thanks-lottie';
+    logo.appendChild(lot);
     var title = document.createElement('div');
     title.className = 'thanks-title';
     title.textContent = screen.title;
@@ -1291,19 +1333,41 @@
     wrap.appendChild(logo);
     wrap.appendChild(title);
     wrap.appendChild(sub);
+    if (!reduceMotion){
+      var bub = document.createElement('div');
+      bub.className = 'bubbles';
+      BUBBLES.forEach(function(b){
+        var el = document.createElement('i');
+        el.className = 'bubble';
+        el.style.cssText = '--x:' + b[0] + '%;--size:' + b[1] + 'px;--delay:' + (BUBBLES_AT + b[2]) + 'ms;--dur:' + b[3] + 'ms;--dx:' + b[4] + 'px';
+        bub.appendChild(el);
+      });
+      wrap.appendChild(bub);
+    }
     contentEl.appendChild(wrap);
-    setTimeout(function(){ logo.classList.add('on'); }, reduceMotion ? 0 : 100);
-    setTimeout(function(){ title.classList.add('on'); }, reduceMotion ? 0 : 350);
-    setTimeout(function(){ sub.classList.add('on'); }, reduceMotion ? 0 : 550);
+
+    var anim = null;
+    if (window.lottie){
+      anim = lottie.loadAnimation({ container: lot, renderer: 'svg', loop: false, autoplay: false, path: 'lottie/o2-logo-intro.json' });
+      if (reduceMotion) anim.addEventListener('DOMLoaded', function(){ anim.goToAndStop(anim.totalFrames - 1, true); });
+      else setTimeout(function(){ if (lot.isConnected) anim.play(); }, LOGO_AT);
+      var stopCheck = setInterval(function(){ if (!lot.isConnected){ anim.destroy(); clearInterval(stopCheck); } }, 1000);
+    } else {
+      lot.innerHTML = '<img src="img/logo-o2.svg" alt="" style="position:absolute;left:138.8px;top:137.4px;width:123.75px">';
+    }
+    logo._anim = anim; // skipToEnd() jumps it to the last frame
+
+    setTimeout(function(){ title.classList.add('on'); }, reduceMotion ? 0 : 750);
+    setTimeout(function(){ sub.classList.add('on'); }, reduceMotion ? 0 : 950);
 
     var buttons = document.createElement('div');
     buttons.className = 'action-buttons';
     // "Zobrazit voucher" does nothing yet (per brief).
     buttons.appendChild(makeButton('btn-primary', screen.button, null));
     actionsEl.appendChild(buttons);
-    setTimeout(function(){ buttons.classList.add('on'); }, reduceMotion ? 0 : 850);
+    setTimeout(function(){ buttons.classList.add('on'); }, reduceMotion ? 0 : 1250);
 
-    return { dur: (reduceMotion ? 0 : 850) + 400, noHint: true };
+    return { dur: (reduceMotion ? 0 : 1250) + 400, noHint: true };
   }
 
   // ---------------------------------------------------------------
@@ -1503,12 +1567,14 @@
 
   function skipToEnd(){
     phoneEl.classList.add('no-transition');
-    document.querySelectorAll('#content .intro-headline, #content .intro-sub, #content .block-lead, #content .value-row, #content .quote, #content .summary-title, #content .share-card, #content .card-item, #content .thanks-logo, #content .thanks-title, #content .thanks-sub, #actions .action-buttons')
+    document.querySelectorAll('#content .intro-headline, #content .intro-sub, #content .block-lead, #content .value-row, #content .quote, #content .summary-title, #content .share-card, #content .card-item, #content .thanks-title, #content .thanks-sub, #actions .action-buttons')
       .forEach(function(el){ el.classList.add('on'); });
     document.querySelectorAll('.value-row, .card-values').forEach(function(row){
       if (!row._nums) return;
       row._nums.forEach(function(entry){ entry.el.textContent = formatNum(entry.target); });
     });
+    var tl = document.querySelector('#content .thanks-logo');
+    if (tl && tl._anim) tl._anim.goToAndStop(tl._anim.totalFrames - 1, true);
     if (!state.noHint) hintEl.classList.add('show');
     state.screenStart = performance.now() - state.dur;
     requestAnimationFrame(function(){
