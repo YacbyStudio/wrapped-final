@@ -502,24 +502,6 @@
     pointer-events:none;
   }
   .thanks-lottie svg{ overflow:visible; }
-  /* Rising bubbles (after the reference end-screen video). */
-  .bubbles{ position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:2; }
-  .bubble{
-    position:absolute; bottom:-160px; border-radius:50%;
-    width:var(--size); height:var(--size); left:var(--x);
-    background:
-      radial-gradient(circle at 32% 26%, rgba(255,255,255,.7) 0 4%, rgba(255,255,255,0) 16%),
-      radial-gradient(circle at 50% 50%, rgba(255,255,255,0) 56%, rgba(255,255,255,.14) 70%, rgba(255,255,255,.5) 97%, rgba(255,255,255,0) 100%);
-    box-shadow:inset 0 -6px 14px rgba(255,255,255,.12);
-    opacity:0;
-    animation:bubbleRise var(--dur) cubic-bezier(.3,.15,.45,1) var(--delay) forwards;
-  }
-  @keyframes bubbleRise{
-    0%  { opacity:0; transform:translate(0,0) scale(.85); }
-    12% { opacity:1; }
-    80% { opacity:1; }
-    100%{ opacity:0; transform:translate(var(--dx), -1100px) scale(1); }
-  }
   .thanks-title, .thanks-sub{ position:relative; z-index:3; }
   .thanks-title{
     margin-top:59px;
@@ -1307,14 +1289,9 @@
   }
 
   // Thanks: the O₂ logo plays lottie/o2-logo-intro.json (O flies in big
-  // & blurred and settles, the "2" slides in), bubbles rise past it,
-  // then the texts and the button — after the reference end-screen video.
-  var LOGO_AT = 250, BUBBLES_AT = 500;
-  var BUBBLES = [ // x (% of width), size (px), delay (ms after BUBBLES_AT), duration (ms), drift (px)
-    [8, 70, 0, 2600, 14], [62, 46, 120, 2300, -10], [30, 120, 260, 3000, 8],
-    [78, 90, 380, 2700, -18], [16, 34, 520, 2200, 10], [48, 64, 640, 2600, -6],
-    [86, 28, 760, 2100, -8], [4, 150, 900, 3200, 16], [55, 38, 1040, 2400, 12]
-  ];
+  // & blurred and settles, the "2" slides in), then the texts and the
+  // button — after the reference end-screen video.
+  var LOGO_AT = 250;
   function buildThanks(screen){
     var wrap = document.createElement('div');
     wrap.className = 'thanks-wrap';
@@ -1333,17 +1310,6 @@
     wrap.appendChild(logo);
     wrap.appendChild(title);
     wrap.appendChild(sub);
-    if (!reduceMotion){
-      var bub = document.createElement('div');
-      bub.className = 'bubbles';
-      BUBBLES.forEach(function(b){
-        var el = document.createElement('i');
-        el.className = 'bubble';
-        el.style.cssText = '--x:' + b[0] + '%;--size:' + b[1] + 'px;--delay:' + (BUBBLES_AT + b[2]) + 'ms;--dur:' + b[3] + 'ms;--dx:' + b[4] + 'px';
-        bub.appendChild(el);
-      });
-      wrap.appendChild(bub);
-    }
     contentEl.appendChild(wrap);
 
     var anim = null;
