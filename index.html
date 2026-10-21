@@ -503,6 +503,12 @@
   }
   .thanks-lottie svg{ overflow:visible; }
   .thanks-title, .thanks-sub{ position:relative; z-index:3; }
+  /* O₂ bubbles (Brand Factory master artwork, motion from the Ooo2
+     Bubble Factory config — see img/bubbles/bubbles.json). Behind the
+     logo and texts: brand rule "don't put bubbles over type or logo". */
+  .bubble-layer{ position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0; opacity:0; transition:opacity 1.2s ease; }
+  .bubble-layer.on{ opacity:1; }
+  .bubble-layer img{ position:absolute; left:0; top:0; will-change:transform; }
   .thanks-title{
     margin-top:59px;
     font-family:var(--font-display); font-weight:900; font-style:italic;
@@ -1292,6 +1298,49 @@
   // & blurred and settles, the "2" slides in), then the texts and the
   // button — after the reference end-screen video.
   var LOGO_AT = 250;
+
+  // ---- bubbles: seamless loop driven by img/bubbles/bubbles.json ----
+  // Each bubble glides along its own straight line (direction from the
+  // Bubble Factory config ± spread) and wraps from off-screen to
+  // off-screen; it covers the line a whole number of times per
+  // `duration`, so the loop has no seam. Depth → size, blur, opacity.
+  var bubbleModel = null;
+  function loadBubbleModel(){
+    if (!bubbleModel) bubbleModel = fetch('img/bubbles/bubbles.json').then(function(r){ return r.json(); });
+    return bubbleModel;
+  }
+  function startBubbles(layer){
+    loadBubbleModel().then(function(m){
+      if (!layer.isConnected) return;
+      var sx = layer.clientWidth / m.frame.w, sy = layer.clientHeight / m.frame.h;
+      var els = m.bubbles.map(function(b){
+        var img = new Image();
+        img.src = b.img;
+        img.alt = '';
+        img.style.width = img.style.height = (b.size * sx) + 'px';
+        img.style.opacity = b.opacity;
+        if (b.blur) img.style.filter = 'blur(' + (b.blur * sx).toFixed(2) + 'px)';
+        layer.appendChild(img);
+        return img;
+      });
+      var t0 = performance.now();
+      function frame(now){
+        if (!layer.isConnected) return;
+        var p = ((now - t0) / 1000 / m.duration) % 1;  // 0..1 through the loop
+        m.bubbles.forEach(function(b, i){
+          var u = (b.phase + b.loops * p) % 1;
+          var d = (u - .5) * b.len;
+          var x = (b.cx + b.ux * d - b.size / 2) * sx;
+          var y = (b.cy + b.uy * d - b.size / 2) * sy;
+          var r = b.spin * Math.sin(p * 2 * Math.PI);
+          els[i].style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0) rotate(' + r.toFixed(2) + 'deg)';
+        });
+        if (!reduceMotion) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+      requestAnimationFrame(function(){ layer.classList.add('on'); });
+    });
+  }
   function buildThanks(screen){
     var wrap = document.createElement('div');
     wrap.className = 'thanks-wrap';
@@ -1307,10 +1356,14 @@
     var sub = document.createElement('div');
     sub.className = 'thanks-sub';
     sub.textContent = screen.sub;
+    var bubbleLayer = document.createElement('div');
+    bubbleLayer.className = 'bubble-layer';
+    wrap.appendChild(bubbleLayer);
     wrap.appendChild(logo);
     wrap.appendChild(title);
     wrap.appendChild(sub);
     contentEl.appendChild(wrap);
+    startBubbles(bubbleLayer);
 
     var anim = null;
     if (window.lottie){
